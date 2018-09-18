@@ -4,7 +4,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import logging
-from typing import Text, Any, Dict, Optional
+from typing import Text, Any, Dict
 
 from rasa_core.constants import DEFAULT_REQUEST_TIMEOUT
 from rasa_core.nlg.generator import NaturalLanguageGenerator
@@ -21,23 +21,17 @@ def nlg_response_format_spec():
     return {
         "type": "object",
         "properties": {
-            "text": {
-                "type": "string"
-            },
+            "text": {"type": "string"},
             "buttons": {
-                "type": ["array", "null"],
+                "type": "array",
                 "items": {"type": "object"}
             },
             "elements": {
-                "type": ["array", "null"],
+                "type": "array",
                 "items": {"type": "object"}
             },
-            "attachment": {
-                "type": ["object", "null"]
-            },
-            "image": {
-                "type": ["string", "null"]
-            }
+            "attachment": {"type": "object"},
+            "image": {"type": "object"}
         },
     }
 

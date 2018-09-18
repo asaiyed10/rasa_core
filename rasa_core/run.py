@@ -3,15 +3,16 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
-from builtins import str
-from collections import namedtuple
-
 import argparse
 import logging
+from collections import namedtuple
+
 from flask import Flask
 from flask_cors import CORS
-from gevent.pywsgi import WSGIServer
 from threading import Thread
+
+from builtins import str
+from gevent.pywsgi import WSGIServer
 from typing import Text, Optional, Union, List
 
 import rasa_core
@@ -21,6 +22,7 @@ from rasa_core.agent import Agent
 from rasa_core.channels import (
     console, RestInput, InputChannel,
     BUILTIN_CHANNELS)
+from rasa_core.constants import DOCS_BASE_URL
 from rasa_core.interpreter import (
     NaturalLanguageInterpreter)
 from rasa_core.utils import read_yaml_file
@@ -79,27 +81,13 @@ def create_argument_parser():
     parser.add_argument(
             '-c', '--connector',
             default="cmdline",
-            choices=list(BUILTIN_CHANNELS.keys()),
+            choices=["facebook", "slack", "telegram", "mattermost", "cmdline",
+                     "twilio", "botframework", "rocketchat"],
             help="service to connect to")
     parser.add_argument(
             '--enable_api',
             action="store_true",
             help="Start the web server api in addition to the input channel")
-
-    jwt_auth = parser.add_argument_group('JWT Authentication')
-    jwt_auth.add_argument(
-            '--jwt_secret',
-            type=str,
-            help="Public key for asymmetric JWT methods or shared secret"
-                 "for symmetric methods. Please also make sure to use "
-                 "--jwt_method to select the method of the signature, "
-                 "otherwise this argument will be ignored.")
-    jwt_auth.add_argument(
-            '--jwt_method',
-            type=str,
-            default="HS256",
-            help="Method used for the signature of the JWT authentication "
-                 "payload.")
 
     utils.add_logging_option_arguments(parser)
     return parser
@@ -118,36 +106,105 @@ def read_endpoints(endpoint_file):
     return AvailableEndpoints(nlg, nlu, action, model)
 
 
+def _raise_missing_credentials_exception(channel):
+    raise Exception("To use the {} input channel, you need to "
+                    "pass a credentials file using '--credentials'. "
+                    "The argument should be a file path pointing to"
+                    "a yml file containing the {} authentication"
+                    "information. Details in the docs: "
+                    "{}/connectors/#{}-setup".
+                    format(channel, channel, DOCS_BASE_URL, channel))
+
+
 def _create_external_channels(channel, credentials_file):
     # type: (Optional[Text], Optional[Text]) -> List[InputChannel]
 
-    if credentials_file:
-        all_credentials = read_yaml_file(credentials_file)
-    else:
-        all_credentials = {}
+    # the commandline input channel is the only one that doesn't need any
+    # credentials
+    print(credentials_file, "external_chanlles son3")
+
+    if channel == "cmdline":
+        from rasa_core.channels import RestInput
+        return [RestInput()]
+
+    if channel is None and credentials_file is None:
+        # if there is no configuration at all, we'll run without a channel
+        return []
+    elif credentials_file is None:
+        # if there is a channel, but no configuration, this can't be right
+        _raise_missing_credentials_exception(channel)
+
+    all_credentials = read_yaml_file(credentials_file)
+    print(all_credentials)
 
     if channel:
-        return [_create_single_channel(channel, all_credentials.get(channel))]
+        print("1")
+        return [_create_single_channel(channel, all_credentials)]
     else:
+        print("2")
         return [_create_single_channel(c, k)
                 for c, k in all_credentials.items()]
 
 
 def _create_single_channel(channel, credentials):
-    if channel in BUILTIN_CHANNELS:
-        return BUILTIN_CHANNELS[channel].from_credentials(credentials)
+
+    if channel == "facebook":
+        from rasa_core.channels.facebook import FacebookInput
+
+        return FacebookInput(
+                credentials.get("verify"),
+                credentials.get("secret"),
+                credentials.get("page-access-token"))
+    elif channel == "slack":
+        from rasa_core.channels.slack import SlackInput
+
+        return SlackInput(
+                credentials.get("slack_token"),
+                credentials.get("slack_channel"))
+    elif channel == "telegram":
+        from rasa_core.channels.telegram import TelegramInput
+
+        return TelegramInput(
+                credentials.get("access_token"),
+                credentials.get("verify"),
+                credentials.get("webhook_url"))
+    elif channel == "mattermost":
+        from rasa_core.channels.mattermost import MattermostInput
+
+        return MattermostInput(
+                credentials.get("url"),
+                credentials.get("team"),
+                credentials.get("user"),
+                credentials.get("pw"))
+    elif channel == "twilio":
+        print(credentials)
+        from rasa_core.channels.twilio import TwilioInput
+
+        return TwilioInput(
+                credentials.get("account_sid"),
+                credentials.get("auth_token"),
+                credentials.get("twilio_number"))
+    elif channel == "botframework":
+        from rasa_core.channels.botframework import BotFrameworkInput
+        return BotFrameworkInput(
+                credentials.get("app_id"),
+                credentials.get("app_password"))
+    elif channel == "rocketchat":
+        from rasa_core.channels.rocketchat import RocketChatInput
+        return RocketChatInput(
+                credentials.get("user"),
+                credentials.get("password"),
+                credentials.get("server_url"))
+    elif channel == "rasa":
+        from rasa_core.channels.rasa_chat import RasaChatInput
+
+        return RasaChatInput(
+                credentials.get("url"),
+                credentials.get("admin_token"))
     else:
-        # try to load channel based on class name
-        try:
-            input_channel_class = utils.class_from_module_path(channel)
-            return input_channel_class.from_credentials(credentials)
-        except Exception:
-            raise Exception(
-                    "Failed to find input channel class for '{}'. Unknown "
-                    "input channel. Check your credentials configuration to "
-                    "make sure the mentioned channel is not misspelled. If you "
-                    "are creating your own channel, make sure it is a proper "
-                    "name of a class in a module.".format(channel))
+        raise Exception("This script currently only supports the "
+                        "{} connectors."
+                        "".format(", ".join(BUILTIN_CHANNELS)))
 
 
 def create_http_input_channels(channel,  # type: Union[None, Text, RestInput]
@@ -155,6 +212,7 @@ def create_http_input_channels(channel,  # type: Union[None, Text, RestInput]
                                ):
     # type: (...) -> List[InputChannel]
     """Instantiate the chosen input channel."""
+    print(credentials_file, "create_http son2")
 
     if channel is None or channel in rasa_core.channels.BUILTIN_CHANNELS:
         return _create_external_channels(channel, credentials_file)
@@ -180,17 +238,13 @@ def start_server(input_channels,
                  auth_token,
                  port,
                  initial_agent,
-                 enable_api=True,
-                 jwt_secret=None,
-                 jwt_method=None):
+                 enable_api=True):
     """Run the agent."""
 
     if enable_api:
         app = server.create_app(initial_agent,
                                 cors_origins=cors,
-                                auth_token=auth_token,
-                                jwt_secret=jwt_secret,
-                                jwt_method=jwt_method)
+                                auth_token=auth_token)
     else:
         app = Flask(__name__)
         CORS(app, resources={r"/*": {"origins": cors or ""}})
@@ -206,7 +260,7 @@ def start_server(input_channels,
 
     http_server = WSGIServer(('0.0.0.0', port), app)
     logger.info("Rasa Core server is up and running on "
-                "{}".format(constants.DEFAULT_SERVER_FORMAT.format(port)))
+                "{}".format(constants.DEFAULT_SERVER_URL))
     http_server.start()
     return http_server
 
@@ -217,19 +271,18 @@ def serve_application(initial_agent,
                       credentials_file=None,
                       cors=None,
                       auth_token=None,
-                      enable_api=True,
-                      jwt_secret=None,
-                      jwt_method=None,
+                      enable_api=True
                       ):
+
+    print(credentials_file, "server_app son")
+
     input_channels = create_http_input_channels(channel, credentials_file)
 
     http_server = start_server(input_channels, cors, auth_token,
-                               port, initial_agent, enable_api,
-                               jwt_secret, jwt_method)
+                               port, initial_agent, enable_api)
 
     if channel == "cmdline":
-        start_cmdline_io(constants.DEFAULT_SERVER_FORMAT.format(port),
-                         http_server.stop)
+        start_cmdline_io(constants.DEFAULT_SERVER_URL, http_server.stop)
 
     try:
         http_server.serve_forever()
@@ -277,13 +330,10 @@ if __name__ == '__main__':
     _agent = load_agent(cmdline_args.core,
                         interpreter=_interpreter,
                         endpoints=_endpoints)
-
     serve_application(_agent,
                       cmdline_args.connector,
                       cmdline_args.port,
                       cmdline_args.credentials,
                       cmdline_args.cors,
                       cmdline_args.auth_token,
-                      cmdline_args.enable_api,
-                      cmdline_args.jwt_secret,
-                      cmdline_args.jwt_method)
+                      cmdline_args.enable_api)

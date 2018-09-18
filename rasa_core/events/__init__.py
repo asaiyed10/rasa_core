@@ -58,7 +58,7 @@ def first_key(d, default_key):
 
 # noinspection PyProtectedMember
 class Event(object):
-    """Events describe everything that occurs in
+    """Events describe everything that occurs in 
     a conversation and tell the :class:`DialogueStateTracker`
     how to update its state."""
 
@@ -303,9 +303,6 @@ class BotUttered(Event):
 class SlotSet(Event):
     """The user has specified their preference for the value of a ``slot``.
 
-    Every slot has a name and a value. This event can be used to set a
-    value for a slot on a conversation.
-
     As a side effect the ``Tracker``'s slots will be updated so
     that ``tracker.slots[key]=value``."""
 
@@ -368,9 +365,7 @@ class SlotSet(Event):
 class Restarted(Event):
     """Conversation should start over & history wiped.
 
-    Instead of deleting all events, this event can be used to reset the
-    trackers state (e.g. ignoring any past user messages & resetting all
-    the slots)."""
+    As a side effect the ``Tracker`` will be reinitialised."""
 
     type_name = "restart"
 
@@ -389,15 +384,15 @@ class Restarted(Event):
     def apply_to(self, tracker):
         from rasa_core.actions.action import ACTION_LISTEN_NAME
         tracker._reset()
-        tracker.trigger_followup_action(ACTION_LISTEN_NAME)
+        tracker.trigger_follow_up_action(ACTION_LISTEN_NAME)
 
 
 # noinspection PyProtectedMember
 class UserUtteranceReverted(Event):
-    """Bot reverts everything until before the most recent user message.
-
-    The bot will revert all events after the latest `UserUttered`, this
-    also means that the last event on the tracker is usually `action_listen`
+    """Bot reverts everything until before the most recent user message. 
+    
+    The bot will revert all events after the latest `UserUttered`, this 
+    also means that the last event on the tracker is usually `action_listen` 
     and the bot is waiting for a new user message."""
 
     type_name = "rewind"
@@ -423,11 +418,9 @@ class UserUtteranceReverted(Event):
 
 # noinspection PyProtectedMember
 class AllSlotsReset(Event):
-    """All Slots are reset to their initial values.
+    """Conversation should start over & history wiped.
 
-    If you want to keep the dialogue history and only want to reset the
-    slots, you can use this event to set all the slots to their initial
-    values."""
+    As a side effect the ``Tracker`` will be reinitialised."""
 
     type_name = "reset_slots"
 
@@ -522,9 +515,9 @@ class ActionReverted(Event):
     """Bot undoes its last action.
 
     The bot everts everything until before the most recent action.
-    This includes the action itself, as well as any events that
-    action created, like set slot events - the bot will now
-    predict a new action using the state before the most recent
+    This includes the action itself, as well as any events that 
+    action created, like set slot events - the bot will now 
+    predict a new action using the state before the most recent 
     action."""
 
     type_name = "undo"
@@ -614,7 +607,7 @@ class FollowupAction(Event):
 
     def apply_to(self, tracker):
         # type: (DialogueStateTracker) -> None
-        tracker.trigger_followup_action(self.action_name)
+        tracker.trigger_follow_up_action(self.action_name)
 
 
 # noinspection PyProtectedMember
@@ -676,17 +669,13 @@ class ActionExecuted(Event):
 
     type_name = "action"
 
-    def __init__(self, action_name, policy=None, policy_confidence=None, timestamp=None):
+    def __init__(self, action_name, timestamp=None):
         self.action_name = action_name
-        self.policy = policy
-        self.policy_confidence = policy_confidence
         self.unpredictable = False
         super(ActionExecuted, self).__init__(timestamp)
 
     def __str__(self):
-        return ("ActionExecuted(action: {}, policy: {}, policy_confidence: {})"
-                "".format(self.action_name, self.policy,
-                          self.policy_confidence))
+        return "ActionExecuted(action: {})".format(self.action_name)
 
     def __hash__(self):
         return hash(self.action_name)
@@ -703,10 +692,7 @@ class ActionExecuted(Event):
     @classmethod
     def _from_story_string(cls, parameters):
         return ActionExecuted(parameters.get("name"),
-                              parameters.get("policy"),
-                              parameters.get("policy_confidence"),
-                              parameters.get("timestamp")
-                              )
+                              parameters.get("timestamp"))
 
     def as_dict(self):
         d = super(ActionExecuted, self).as_dict()

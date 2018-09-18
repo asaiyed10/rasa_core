@@ -12,10 +12,8 @@ from twilio.rest import Client
 
 from rasa_core.channels import UserMessage, OutputChannel
 from rasa_core.channels import InputChannel
-
 logger = logging.getLogger(__name__)
-
-
+var = "empty"
 class TwilioOutput(Client, OutputChannel):
     """Output channel for Twilio"""
 
@@ -28,12 +26,16 @@ class TwilioOutput(Client, OutputChannel):
         self.twilio_number = twilio_number
         self.send_retry = 0
         self.max_retry = 5
+        #saveNumber(account_sid,auth_token)
+
+
 
     def send_text_message(self, recipient_number, text):
         """Sends text message"""
 
         for message_part in text.split("\n\n"):
             self._send_text(recipient_number, message_part)
+
 
     def _send_text(self, recipient_number, text):
         from twilio.base.exceptions import TwilioRestException
@@ -59,6 +61,12 @@ class TwilioOutput(Client, OutputChannel):
     def send_image_url(self, recipient_number, image_url):
         pass
 
+    def saveNumber(self,account_sid,auth_token):
+        client= Client(account_sid, auth_token)
+        incoming_phone_number= client.incoming_phone_number.list()
+        for record in incoming_phone_number:
+            var= record
+        return var 
 
 class TwilioInput(InputChannel):
     """Twilio input channel"""

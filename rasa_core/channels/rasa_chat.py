@@ -17,28 +17,20 @@ logger = logging.getLogger(__name__)
 class RasaChatInput(RestInput):
     """Chat input channel for Rasa Platform"""
 
-    @classmethod
-    def name(cls):
-        return "rasa"
-
-    @classmethod
-    def from_credentials(cls, credentials):
-        if not credentials:
-            cls.raise_missing_credentials_exception()
-
-        return cls(credentials.get("url"),
-                   credentials.get("admin_token"))
-
     def __init__(self, url, admin_token=None):
         self.base_url = url
         self.admin_token = admin_token
+
+    @classmethod
+    def name(cls):
+        return "rasa"
 
     def _check_token(self, token):
         url = "{}/users/me".format(self.base_url)
         headers = {"Authorization": token}
         logger.debug("Requesting user information from auth server {}."
                      "".format(url))
-        result = requests.get(url,
+        result = requests.get(url, 
                               headers=headers,
                               timeout=DEFAULT_REQUEST_TIMEOUT)
 
