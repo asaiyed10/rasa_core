@@ -27,6 +27,9 @@ from rasa_core.interpreter import (
     NaturalLanguageInterpreter)
 from rasa_core.utils import read_yaml_file
 
+
+from rasa_core.bot_server_channel import BotServerInputChannel
+
 logger = logging.getLogger()  # get the root logger
 
 AvailableEndpoints = namedtuple('AvailableEndpoints', 'nlg '
@@ -82,7 +85,7 @@ def create_argument_parser():
             '-c', '--connector',
             default="cmdline",
             choices=["facebook", "slack", "telegram", "mattermost", "cmdline",
-                     "twilio", "botframework", "rocketchat"],
+                     "twilio", "botframework", "rocketchat","bot"],
             help="service to connect to")
     parser.add_argument(
             '--enable_api',
@@ -121,7 +124,7 @@ def _create_external_channels(channel, credentials_file):
 
     # the commandline input channel is the only one that doesn't need any
     # credentials
-    print(credentials_file, "external_chanlles son3")
+    print(channel, credentials_file, "external_chanlles son3")
 
     if channel == "cmdline":
         from rasa_core.channels import RestInput
@@ -201,6 +204,10 @@ def _create_single_channel(channel, credentials):
         return RasaChatInput(
                 credentials.get("url"),
                 credentials.get("admin_token"))
+    elif channel == "bot":
+        from rasa_core.bot_server_channel import BotServerInputChannel
+        return BotServerInputChannel()
+
     else:
         raise Exception("This script currently only supports the "
                         "{} connectors."
@@ -212,7 +219,7 @@ def create_http_input_channels(channel,  # type: Union[None, Text, RestInput]
                                ):
     # type: (...) -> List[InputChannel]
     """Instantiate the chosen input channel."""
-    print(credentials_file, "create_http son2")
+    print(channel, credentials_file, "create_http son2")
 
     if channel is None or channel in rasa_core.channels.BUILTIN_CHANNELS:
         return _create_external_channels(channel, credentials_file)
@@ -274,7 +281,7 @@ def serve_application(initial_agent,
                       enable_api=True
                       ):
 
-    print(credentials_file, "server_app son")
+    print(channel, credentials_file, "server_app son")
 
     input_channels = create_http_input_channels(channel, credentials_file)
 

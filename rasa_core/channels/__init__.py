@@ -20,4 +20,5 @@ BUILTIN_CHANNELS = {
     'rasa',
     'botframework',
     'rocketchat',
+    'bot'
 }
