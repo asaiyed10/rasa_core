@@ -101,6 +101,7 @@ class Action(object):
 
     def run(self, dispatcher, tracker, domain):
         # type: (Dispatcher, DialogueStateTracker, Domain) -> List[Event]
+        print("running action----------1--------")
         """
         Execute the side effects of this action.
 
@@ -135,7 +136,7 @@ class UtterAction(Action):
 
     def run(self, dispatcher, tracker, domain):
         """Simple run implementation uttering a (hopefully defined) template."""
-
+        print(" utter action  ----------------2--------------------- ")
         dispatcher.utter_template(self.name(),
                                   tracker)
         return []
@@ -203,7 +204,7 @@ class RemoteAction(Action):
     def _action_call_format(self, tracker, domain):
         # type: (DialogueStateTracker, Domain) -> Dict[Text, Any]
         """Create the request json send to the action server."""
-
+        print("creating request json and sending to the action server ----------------3---------------------")
         tracker_state = tracker.current_state(
                 should_include_events=True,
                 should_ignore_restarts=True)
@@ -268,7 +269,7 @@ class RemoteAction(Action):
 
         Uses the normal dispatcher to utter the responses from the action
         endpoint."""
-
+        print("action utter responses ----------------4--------------------- ")
         for response in responses:
             if "template" in response:
                 kwargs = response.copy()
@@ -295,6 +296,7 @@ class RemoteAction(Action):
             dispatcher.utter_response(draft)
 
     def run(self, dispatcher, tracker, domain):
+        print("running remote action server -------------------------------5------------------")
         json = self._action_call_format(tracker, domain)
 
         if not self.action_endpoint:

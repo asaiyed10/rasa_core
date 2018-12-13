@@ -144,11 +144,11 @@ class RedisTrackerStore(TrackerStore):
 class MongoTrackerStore(TrackerStore):
     def __init__(self,
                  domain,
-                 host="mongodb://localhost:27017",
-                 db="rasa",
+                 host=None,
+                 db=None,
                  username=None,
                  password=None,
-                 collection="conversations",
+                 collection=None,
                  event_broker=None):
         from pymongo.database import Database
         from pymongo import MongoClient
@@ -157,14 +157,20 @@ class MongoTrackerStore(TrackerStore):
                                   username=username,
                                   password=password,
                                   # delay connect until process forking is done
-                                  connect=False)
-
+                                  connect=True)
+        print(self.client)
+        print(username)
+        print(password)
+        
         self.db = Database(self.client, db)
         self.collection = collection
+        print()
         super(MongoTrackerStore, self).__init__(domain, event_broker)
 
         self._ensure_indices()
-
+        print("_______________________________________________________________")
+        print("method activate" )
+        print("_______________________________________________________________")
     @property
     def conversations(self):
         return self.db[self.collection]

@@ -91,7 +91,7 @@ def create_argument_parser():
             '--enable_api',
             action="store_true",
             help="Start the web server api in addition to the input channel")
-
+            
     utils.add_logging_option_arguments(parser)
     return parser
 
